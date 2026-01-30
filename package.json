@@ -1,0 +1,29 @@
+{
+  "name": "gestao-banca-matematica",
+  "version": "1.0.0",
+  "description": "Dashboard profissional para gestão de banca matemática e disciplina",
+  "main": "App.jsx",
+  "dependencies": {
+    "react": "^18.0.0",
+    "lucide-react": "^latest",
+    "recharts": "^2.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^latest",
+    "vite": "^latest"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "banca",
+    "gestão",
+    "matemática",
+    "financeiro",
+    "dashboard"
+  ],
+  "author": "",
+  "license": "MIT"
+}
