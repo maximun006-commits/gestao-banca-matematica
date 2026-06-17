@@ -1,27 +1,25 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, Legend
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell
 } from 'recharts';
 import { 
   TrendingUp, 
-  ShieldAlert, 
   Target, 
   Wallet, 
   Calculator, 
   Settings,
   AlertTriangle,
-  CheckCircle2,
-  XCircle,
+  Check,
+  X,
   Info,
-  Zap,
   Layers,
-  BarChart3,
   Activity,
-  PieChart as PieChartIcon,
+  BarChart3,
   Download,
   Upload,
   RefreshCcw,
-  Trash2
+  Trash2,
+  TerminalSquare
 } from 'lucide-react';
 
 const App = () => {
@@ -31,7 +29,7 @@ const App = () => {
     objetivoMensal: 60,
     objetivoDiario: 1.75,
     stopLossDiario: 3.0,
-    oddPadrao: 1.8,
+    oddPadrao: 1.80,
     risco: 'Moderado'
   });
 
@@ -39,16 +37,12 @@ const App = () => {
   const [historico, setHistorico] = useState([]);
   const [view, setView] = useState('dashboard');
   
-  // Controle de Ciclo (1, 2 ou 3)
   const [cicloStep, setCicloStep] = useState(1);
   const [lucroAcumuladoCiclo, setLucroAcumuladoCiclo] = useState(0);
-  
-  // Estado para confirmação de Reset
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const fileInputRef = useRef(null);
 
-  // --- CÁLCULOS MATEMÁTICOS ---
   const apostaBase = useMemo(() => (bancaAtual || 0) * 0.01, [bancaAtual]);
   
   const cicloValues = useMemo(() => ({
@@ -63,7 +57,6 @@ const App = () => {
     return cicloValues.step3;
   }, [cicloStep, cicloValues]);
 
-  // --- MÉTRICAS DE DESEMPENHO AVANÇADAS ---
   const stats = useMemo(() => {
     const totalEntradas = historico.length;
     const wins = historico.filter(h => h.resultado === 'V').length;
@@ -78,7 +71,6 @@ const App = () => {
 
     const lucroTotal = (bancaAtual || 0) - (config.bancaInicial || 0);
 
-    // ✅ Corrigido: Parsing melhorado de lucro
     const lucroBruto = historico.reduce((acc, curr) => {
         const val = parseFloat(String(curr.lucro).replace(/[^0-9.-]/g, '')) || 0;
         return val > 0 ? acc + val : acc;
@@ -89,14 +81,12 @@ const App = () => {
         return val < 0 ? acc + val : acc;
     }, 0));
 
-    // ✅ Corrigido: Melhor tratamento de divisão por zero
     const profitFactor = perdaBruta > 0 
       ? parseFloat((lucroBruto / perdaBruta).toFixed(2))
       : (lucroBruto > 0 ? parseFloat(lucroBruto.toFixed(2)) : 0);
     
     const roi = config.bancaInicial > 0 ? (lucroTotal / config.bancaInicial) * 100 : 0;
 
-    // Calcular média de stake
     const mediaStake = totalEntradas > 0 
       ? historico.reduce((acc, h) => acc + (parseFloat(h.valor) || 0), 0) / totalEntradas
       : 0;
@@ -107,7 +97,7 @@ const App = () => {
         profitFactor, roi, lucroTotal, mediaStake,
         pieData: [
             { name: 'Wins', value: wins, color: '#10b981' },
-            { name: 'Losses', value: losses, color: '#ef4444' }
+            { name: 'Losses', value: losses, color: '#f43f5e' }
         ]
     };
   }, [historico, bancaAtual, config.bancaInicial]);
@@ -115,12 +105,11 @@ const App = () => {
   const statusRisco = useMemo(() => {
     const base = config.bancaInicial || 1;
     const percentual = (bancaAtual / base) * 100;
-    if (percentual > 95) return { cor: 'bg-green-500', label: 'NORMAL', exposicao: '3%' };
-    if (percentual >= 90) return { cor: 'bg-yellow-500', label: 'ATENÇÃO', exposicao: '2%' };
-    return { cor: 'bg-red-500', label: 'CRÍTICO', exposicao: '1%' };
+    if (percentual > 95) return { cor: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', label: 'OPERACIONAL', exposicao: '3%' };
+    if (percentual >= 90) return { cor: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/20', label: 'ATENÇÃO', exposicao: '2%' };
+    return { cor: 'text-rose-500', bg: 'bg-rose-500/10', border: 'border-rose-500/20', label: 'CRÍTICO', exposicao: '1%' };
   }, [bancaAtual, config.bancaInicial]);
 
-  // ✅ Corrigido: Projeção agora respeita stop loss
   const projecoes = useMemo(() => {
     const data = [];
     let tempBanca = bancaAtual || 0;
@@ -130,50 +119,31 @@ const App = () => {
 
     for (let i = 0; i <= 30; i++) {
       data.push({ 
-        dia: `Dia ${i}`, 
+        dia: `D${i}`, 
         valor: parseFloat(tempBanca.toFixed(2)),
         limite: parseFloat(limiteMinimo.toFixed(2))
       });
-      
-      // Simula crescimento com stop loss
-      if (tempBanca <= limiteMinimo) {
-        tempBanca = limiteMinimo; // Para de cair
-      } else {
-        tempBanca *= (1 + taxaDiaria);
-      }
+      if (tempBanca <= limiteMinimo) tempBanca = limiteMinimo;
+      else tempBanca *= (1 + taxaDiaria);
     }
     return data;
   }, [bancaAtual, config.objetivoDiario, config.stopLossDiario, config.bancaInicial]);
 
-  // --- LÓGICA DE BACKUP (EXCEL/CSV) ---
   const exportToCSV = () => {
-    if (historico.length === 0) {
-      alert('Nenhum histórico para exportar');
-      return;
-    }
-    const headers = ["Data/Hora", "Stake (R$)", "Resultado", "Lucro/Prej (R$)", "Saldo (R$)", "Status"];
-    const rows = historico.map(h => [
-      h.data, 
-      h.valor, 
-      h.resultado === 'V' ? 'GREEN' : 'RED', 
-      h.lucro, 
-      h.bancaResultante, 
-      h.status
-    ]);
+    if (historico.length === 0) return alert('Sem histórico.');
+    const headers = ["Data", "Stake", "Resultado", "Lucro", "Saldo", "Status"];
+    const rows = historico.map(h => [h.data, h.valor, h.resultado === 'V' ? 'WIN' : 'LOSS', h.lucro, h.bancaResultante, h.status]);
     const csvContent = "\ufeff" + [headers, ...rows].map(e => e.join(";")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", `GESTAO_PRO_BACKUP_${new Date().toISOString().slice(0,10)}.csv`);
-    link.style.visibility = 'hidden';
+    link.setAttribute("download", `EXPORT_${new Date().toISOString().slice(0,10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
-  // ✅ Corrigido: Melhor parsing de CSV com suporte a formato brasileiro
   const importFromCSV = (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -185,19 +155,13 @@ const App = () => {
         const importedHistory = lines.slice(1).map((line, index) => {
           const columns = line.replace("\ufeff", "").split(";");
           if (columns.length < 6) return null;
-          
-          // ✅ Parse melhorado para formato brasileiro
-          const parseNumberBR = (str) => {
-            return parseFloat(String(str).replace(",", ".").trim());
-          };
-
           return {
             id: Date.now() + index,
             data: columns[0].trim(),
             valor: String(columns[1]).trim(),
-            resultado: columns[2].trim() === 'GREEN' ? 'V' : 'R',
+            resultado: columns[2].trim() === 'WIN' ? 'V' : 'R',
             lucro: String(columns[3]).trim(),
-            bancaResultante: parseNumberBR(columns[4]),
+            bancaResultante: parseFloat(String(columns[4]).replace(",", ".").trim()),
             status: columns[5]?.trim() || 'Importado'
           };
         }).filter(item => item !== null);
@@ -208,20 +172,13 @@ const App = () => {
           setCicloStep(1);
           setLucroAcumuladoCiclo(0);
           setView('desempenho');
-          alert(`✅ Importados ${importedHistory.length} registros com sucesso!`);
-        } else {
-          alert('❌ Nenhum registro válido encontrado no CSV');
         }
-      } catch (err) { 
-        console.error("Erro ao importar CSV:", err);
-        alert('❌ Erro ao importar CSV: ' + err.message);
-      }
+      } catch (err) { alert('Erro: ' + err.message); }
     };
     reader.readAsText(file);
     event.target.value = null;
   };
 
-  // --- LÓGICA DE RESET ---
   const handleReset = () => {
     setBancaAtual(config.bancaInicial);
     setHistorico([]);
@@ -230,351 +187,302 @@ const App = () => {
     setShowResetConfirm(false);
   };
 
-  // ✅ Corrigido: Lógica de ciclos agora atualiza bancaResultante corretamente
   const processarEntrada = (resultado) => {
     const valorAtual = valorEntradaAtual || 0;
-    const lucroDestaEntrada = valorAtual * (config.oddPadrao - 1); // Retorno baseado na Odd configurada
+    const lucroDestaEntrada = valorAtual * (config.oddPadrao - 1);
     
     if (resultado === 'V') {
       const novoLucroAcumulado = lucroAcumuladoCiclo + lucroDestaEntrada;
-      
       if (cicloStep < 3) {
-        // Ainda não completou o ciclo
         setLucroAcumuladoCiclo(novoLucroAcumulado);
         setCicloStep(cicloStep + 1);
         setHistorico([{
           id: Date.now(),
-          data: new Date().toLocaleTimeString('pt-BR'),
+          data: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit', second:'2-digit'}),
           valor: valorAtual.toFixed(2),
           resultado: 'V',
           bancaResultante: Number(bancaAtual.toFixed(2)),
           lucro: `+${lucroDestaEntrada.toFixed(2)} (Em Ciclo)`,
-          status: `Passo ${cicloStep} OK`
+          status: `P${cicloStep} OK`
         }, ...historico]);
       } else {
-        // Ciclo completo! Adiciona lucro à banca
         const lucroFinalCiclo = novoLucroAcumulado;
         const novaBanca = bancaAtual + lucroFinalCiclo;
-        
         setBancaAtual(novaBanca);
         setLucroAcumuladoCiclo(0);
         setCicloStep(1);
-        
         setHistorico([{
           id: Date.now(),
-          data: new Date().toLocaleTimeString('pt-BR'),
+          data: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit', second:'2-digit'}),
           valor: valorAtual.toFixed(2),
           resultado: 'V',
           bancaResultante: Number(novaBanca.toFixed(2)),
-          lucro: `+${lucroFinalCiclo.toFixed(2)} (CICLO COMPLETO)`,
-          status: "Ciclo Finalizado"
+          lucro: `+${lucroFinalCiclo.toFixed(2)}`,
+          status: "CICLO COMPLETO"
         }, ...historico]);
       }
     } else {
-      // Derrota = perde o valor e reseta ciclo
       const novaBanca = Math.max(0, bancaAtual - valorAtual);
-      
       setBancaAtual(novaBanca);
       setLucroAcumuladoCiclo(0);
       setCicloStep(1);
-      
       setHistorico([{
         id: Date.now(),
-        data: new Date().toLocaleTimeString('pt-BR'),
+        data: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit', second:'2-digit'}),
         valor: valorAtual.toFixed(2),
         resultado: 'R',
         bancaResultante: Number(novaBanca.toFixed(2)),
         lucro: `-${valorAtual.toFixed(2)}`,
-        status: "Ciclo Interrompido"
+        status: "INTERROMPIDO"
       }, ...historico]);
     }
   };
 
-  const Card = ({ title, value, icon: Icon, color, subValue }) => (
-    <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-lg hover:border-slate-700 transition-colors">
-      <div className="flex justify-between items-start">
-        <div>
-          <p className="text-slate-400 text-sm font-medium mb-1 uppercase tracking-wider">{title}</p>
-          <h3 className="text-2xl font-bold text-white">{value}</h3>
-          {subValue && <p className="text-xs mt-1 text-slate-500">{subValue}</p>}
-        </div>
-        <div className={`p-3 rounded-lg ${color} bg-opacity-10`}>
-          <Icon size={20} className={color.replace('bg-', 'text-')} />
-        </div>
+  const Card = ({ title, value, icon: Icon, colorClass, subValue }) => (
+    <div className="bg-zinc-900/50 border border-zinc-800/80 p-4 rounded-md hover:border-zinc-700 transition-colors flex flex-col justify-between">
+      <div className="flex justify-between items-start mb-2">
+        <p className="text-zinc-500 text-[10px] uppercase tracking-widest font-semibold">{title}</p>
+        <Icon size={14} className={colorClass} />
+      </div>
+      <div>
+        <h3 className="text-xl font-medium text-zinc-100 tracking-tight">{value}</h3>
+        {subValue && <p className="text-[10px] mt-1 text-zinc-500 font-mono">{subValue}</p>}
       </div>
     </div>
   );
 
+  const NavButton = ({ id, label }) => (
+    <button 
+      onClick={() => setView(id)} 
+      className={`px-4 py-2 text-xs uppercase tracking-wider font-medium transition-all border-b-2 ${view === id ? 'border-zinc-300 text-zinc-100' : 'border-transparent text-zinc-600 hover:text-zinc-300'}`}
+    >
+      {label}
+    </button>
+  );
+
   return (
-    <div className="min-h-screen bg-black text-slate-200 font-sans p-4 md:p-8 relative">
+    <div className="min-h-screen bg-[#0a0a0a] text-zinc-300 font-sans p-4 md:p-6 selection:bg-zinc-800 selection:text-white">
       
-      {/* MODAL DE CONFIRMAÇÃO DE RESET */}
+      {/* MODAL RESET */}
       {showResetConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-red-500/30 p-8 rounded-2xl max-w-md w-full shadow-[0_0_50px_rgba(239,68,68,0.2)]">
-            <div className="flex items-center gap-4 text-red-500 mb-6">
-              <div className="p-3 bg-red-500/10 rounded-full">
-                <Trash2 size={24} />
-              </div>
-              <h3 className="text-xl font-black uppercase tracking-tighter italic">Confirmar Reset Total?</h3>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+          <div className="bg-zinc-950 border border-rose-900/50 p-6 rounded-md max-w-sm w-full shadow-2xl">
+            <div className="flex items-center gap-3 text-rose-500 mb-4">
+              <AlertTriangle size={18} />
+              <h3 className="text-sm font-semibold uppercase tracking-wider">Atenção Crítica</h3>
             </div>
-            <p className="text-slate-400 text-sm leading-relaxed mb-8">
-              Esta ação é <strong>irreversível</strong>. Você perderá todo o histórico de operações, métricas de desempenho e o saldo atual será retornado ao valor inicial. Deseja prossuir?
+            <p className="text-zinc-400 text-xs leading-relaxed mb-6 font-mono">
+              A purga de dados é irreversível. O histórico e as estatísticas serão perdidos. A banca retornará ao valor base ({config.bancaInicial}).
             </p>
-            <div className="flex gap-3">
-              <button 
-                onClick={() => setShowResetConfirm(false)}
-                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-all text-xs uppercase tracking-widest"
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={handleReset}
-                className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl transition-all text-xs uppercase tracking-widest shadow-lg shadow-red-600/20"
-              >
-                Sim, Resetar Tudo
-              </button>
+            <div className="flex gap-2">
+              <button onClick={() => setShowResetConfirm(false)} className="flex-1 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 rounded text-[10px] uppercase tracking-widest font-medium transition-all">Cancelar</button>
+              <button onClick={handleReset} className="flex-1 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-500 rounded text-[10px] uppercase tracking-widest font-medium transition-all">Purgar Sistema</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* INPUT FILE OCULTO */}
       <input type="file" ref={fileInputRef} onChange={importFromCSV} accept=".csv" className="hidden" />
 
-      {/* HEADER */}
-      <header className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-white tracking-tighter flex items-center gap-2">
-            <ShieldAlert className="text-blue-500" /> GESTÃO <span className="text-blue-500">PRO</span>
-          </h1>
-          <p className="text-slate-500 text-sm uppercase font-bold tracking-widest">Controle de Desempenho e Ciclos</p>
-        </div>
-        
-        <div className="flex items-center gap-2 bg-slate-900 p-1 rounded-lg border border-slate-800 overflow-x-auto max-w-full">
-          <button onClick={() => setView('dashboard')} className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all ${view === 'dashboard' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>Dashboard</button>
-          <button onClick={() => setView('desempenho')} className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all ${view === 'desempenho' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>Desempenho</button>
-          <button onClick={() => setView('operacoes')} className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all ${view === 'operacoes' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>Operações</button>
-          <button onClick={() => setView('projecoes')} className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all ${view === 'projecoes' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>Projeções</button>
+      {/* TERMINAL HEADER */}
+      <header className="max-w-[1400px] mx-auto mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-end border-b border-zinc-800 pb-2">
+          <div className="mb-4 md:mb-0">
+            <div className="flex items-center gap-2 mb-1">
+              <TerminalSquare size={16} className="text-zinc-500" />
+              <h1 className="text-lg font-medium text-zinc-100 tracking-wide">GESTÃO<span className="text-zinc-600 font-light">TERMINAL</span></h1>
+            </div>
+            <div className="flex items-center gap-3 text-[10px] font-mono text-zinc-500">
+              <span className="flex items-center gap-1"><span className={`w-1.5 h-1.5 rounded-full ${statusRisco.bg.replace('bg-', 'bg-').replace('/10', '')}`}></span> SYS: ONLINE</span>
+              <span>VER: 5.0.0</span>
+              <span>RISK: {statusRisco.label}</span>
+            </div>
+          </div>
+          
+          <div className="flex gap-2 overflow-x-auto w-full md:w-auto hide-scrollbar">
+            <NavButton id="dashboard" label="Operação" />
+            <NavButton id="desempenho" label="Análise" />
+            <NavButton id="operacoes" label="Ledger" />
+            <NavButton id="projecoes" label="Parâmetros" />
+          </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto space-y-6">
+      <main className="max-w-[1400px] mx-auto space-y-4">
         
-        {/* INDICADORES RÁPIDOS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card 
-            title="Banca Atual" 
-            value={`R$ ${bancaAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} 
-            icon={Wallet} 
-            color="bg-blue-500" 
-            subValue={`Lucro Virtual: R$ ${(lucroAcumuladoCiclo || 0).toFixed(2)}`}
-          />
-          <Card 
-            title="Taxa de Acerto" 
-            value={`${(stats.taxaAcerto || 0).toFixed(1)}%`} 
-            icon={Target} 
-            color="bg-emerald-500" 
-            subValue={`${stats.wins} Wins / ${stats.losses} Losses`} 
-          />
-          <Card 
-            title="Eficiência Ciclo" 
-            value={`${(stats.eficienciaCiclo || 0).toFixed(1)}%`} 
-            icon={Zap} 
-            color="bg-yellow-500" 
-            subValue={`${stats.ciclosCompletos} Ciclos Finalizados`} 
-          />
-          <Card 
-            title="ROI Global" 
-            value={`${(stats.roi || 0).toFixed(2)}%`} 
-            icon={TrendingUp} 
-            color={stats.roi >= 0 ? "bg-emerald-500" : "bg-red-500"} 
-            subValue={`Total: R$ ${(stats.lucroTotal || 0).toFixed(2)}`}
-          />
+        {/* TOP KPI ROW */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <Card title="Banca Operacional" value={`R$ ${bancaAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} icon={Wallet} colorClass="text-zinc-400" subValue={`Lucro Latente: R$ ${(lucroAcumuladoCiclo || 0).toFixed(2)}`} />
+          <Card title="Win Rate" value={`${(stats.taxaAcerto || 0).toFixed(1)}%`} icon={Target} colorClass="text-zinc-400" subValue={`${stats.wins} W / ${stats.losses} L`} />
+          <Card title="Completude de Ciclo" value={`${(stats.eficienciaCiclo || 0).toFixed(1)}%`} icon={Layers} colorClass="text-zinc-400" subValue={`${stats.ciclosCompletos} Executados`} />
+          <Card title="Net ROI" value={`${(stats.roi || 0).toFixed(2)}%`} icon={Activity} colorClass={stats.roi >= 0 ? "text-emerald-500" : "text-rose-500"} subValue={`Vol: R$ ${(stats.lucroTotal || 0).toFixed(2)}`} />
         </div>
 
+        {/* VIEW: OPERAÇÃO (DASHBOARD) */}
         {view === 'dashboard' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-10"><Zap size={80} className="text-blue-500" /></div>
-              <div className="flex items-center justify-between mb-8 border-b border-slate-800 pb-4">
-                <div className="flex items-center gap-2">
-                  <Layers className="text-blue-500" /><h3 className="font-black text-xl text-white uppercase tracking-tighter">Execução de Ciclo</h3>
-                </div>
-                <div className="flex gap-1">
-                  {[1, 2, 3].map(s => (<div key={s} className={`w-8 h-2 rounded-full ${cicloStep >= s ? 'bg-blue-500' : 'bg-slate-800'}`}></div>))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <div className={`p-5 rounded-xl border transition-all ${cicloStep === 1 ? 'bg-blue-600/10 border-blue-500 scale-105 shadow-xl' : 'bg-black/20 border-slate-800 opacity-50'}`}>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Passo 1</span>
-                  <div className="text-3xl font-black text-white">R$ {(cicloValues.step1 || 0).toFixed(2)}</div>
-                  <p className="text-[10px] text-slate-500 mt-2 font-bold uppercase">Entrada 1%</p>
-                </div>
-                <div className={`p-5 rounded-xl border transition-all ${cicloStep === 2 ? 'bg-blue-600/10 border-blue-500 scale-105 shadow-xl' : 'bg-black/20 border-slate-800 opacity-50'}`}>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Passo 2</span>
-                  <div className="text-3xl font-black text-white">R$ {(cicloValues.step2 || 0).toFixed(2)}</div>
-                  <p className="text-[10px] text-slate-500 mt-2 font-bold uppercase">Entrada 2%</p>
-                </div>
-                <div className={`p-5 rounded-xl border transition-all ${cicloStep === 3 ? 'bg-blue-600/10 border-blue-500 scale-105 shadow-xl' : 'bg-black/20 border-slate-800 opacity-50'}`}>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Passo 3</span>
-                  <div className="text-3xl font-black text-white">R$ {(cicloValues.step3 || 0).toFixed(2)}</div>
-                  <p className="text-[10px] text-slate-500 mt-2 font-bold uppercase">Entrada 4%</p>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            
+            {/* PAINEL CENTRAL DE TRADING */}
+            <div className="lg:col-span-8 bg-zinc-900/30 border border-zinc-800 rounded-md p-5 flex flex-col">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">Painel de Execução: Soros</h2>
+                <div className="flex gap-1.5">
+                  {[1, 2, 3].map(s => (
+                    <div key={s} className={`w-6 h-1 rounded-sm ${cicloStep >= s ? 'bg-zinc-300' : 'bg-zinc-800'}`} />
+                  ))}
                 </div>
               </div>
 
-              <div className="flex flex-col md:flex-row gap-4">
-                 <button onClick={() => processarEntrada('V')} className="flex-1 py-6 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl transition-all flex flex-col items-center justify-center gap-2">
-                   <CheckCircle2 size={24} /><span className="text-xs">Registrar Vitória</span>
-                   <span className="text-[10px] opacity-70">Stake: R$ {(valorEntradaAtual || 0).toFixed(2)}</span>
-                 </button>
-                 <button onClick={() => processarEntrada('R')} className="flex-1 py-6 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl transition-all flex flex-col items-center justify-center gap-2">
-                   <XCircle size={24} /><span className="text-xs">Registrar Derrota</span>
-                   <span className="text-[10px] opacity-70">Resetar Ciclo</span>
-                 </button>
+              <div className="grid grid-cols-3 gap-3 mb-6 flex-grow">
+                {[
+                  { step: 1, val: cicloValues.step1, label: 'BASE (1%)' },
+                  { step: 2, val: cicloValues.step2, label: `ALAVANCA 1 (x${config.oddPadrao})` },
+                  { step: 3, val: cicloValues.step3, label: `ALAVANCA 2 (x${Math.pow(config.oddPadrao, 2).toFixed(2)})` }
+                ].map((item) => (
+                  <div key={item.step} className={`p-4 rounded-md border flex flex-col justify-center transition-all ${cicloStep === item.step ? 'bg-zinc-800/80 border-zinc-600' : 'bg-zinc-900/20 border-zinc-800/50 opacity-60'}`}>
+                    <span className="text-[9px] text-zinc-500 font-mono mb-2 uppercase">{item.label}</span>
+                    <div className="text-2xl font-light text-zinc-100 tracking-tight">
+                      <span className="text-sm text-zinc-600 mr-1">R$</span>{item.val.toFixed(2)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col sm:flex-row justify-between items-center bg-zinc-950 border border-zinc-800/80 p-3 rounded-md gap-4">
+                 <div className="text-left w-full sm:w-auto">
+                    <span className="text-[9px] text-zinc-500 font-mono uppercase block mb-0.5">Stake Atual</span>
+                    <span className="text-sm font-medium text-zinc-200 font-mono">R$ {valorEntradaAtual.toFixed(2)}</span>
+                 </div>
+                 <div className="flex gap-2 w-full sm:w-auto">
+                   <button onClick={() => processarEntrada('V')} className="flex-1 sm:flex-none px-6 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded font-medium transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
+                     <Check size={14} /> Win
+                   </button>
+                   <button onClick={() => processarEntrada('R')} className="flex-1 sm:flex-none px-6 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded font-medium transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
+                     <X size={14} /> Loss
+                   </button>
+                 </div>
               </div>
             </div>
 
-            <div className="lg:col-span-4 space-y-4">
-              <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-                <h3 className="font-black text-xs mb-4 uppercase tracking-widest flex items-center gap-2 text-blue-500"><Info size={16} /> Protocolo</h3>
-                <div className="space-y-4 text-[11px] text-slate-400">
-                   <p><span className="text-emerald-500 font-bold">Vitória P1/P2:</span> Banca estável, lucro acumulado.</p>
-                   <p><span className="text-emerald-500 font-bold">Vitória P3:</span> Ciclo encerrado, lucro em banca.</p>
-                   <p><span className="text-red-500 font-bold">Qualquer Red:</span> Subtração imediata e reset.</p>
+            {/* SIDEBAR DE INFORMAÇÃO */}
+            <div className="lg:col-span-4 flex flex-col gap-4">
+              <div className="bg-zinc-900/30 border border-zinc-800 rounded-md p-5 flex-1">
+                <h3 className="text-[10px] text-zinc-500 font-semibold uppercase tracking-widest mb-4">Meta do Ciclo</h3>
+                <div className="mb-6">
+                  <div className="text-3xl font-light text-zinc-200 tracking-tight">
+                    <span className="text-sm text-zinc-600 mr-1">R$</span>{(apostaBase * (Math.pow(config.oddPadrao, 3) - 1) || 0).toFixed(2)}
+                  </div>
+                  <p className="text-[10px] text-zinc-600 font-mono mt-1">Estimativa c/ Odd {config.oddPadrao}</p>
                 </div>
-              </div>
-              <div className="bg-blue-600/10 border border-blue-500/30 p-5 rounded-xl">
-                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-2">Lucro Ciclo Completo</span>
-                <div className="text-2xl font-black text-white">R$ {(apostaBase * (Math.pow(config.oddPadrao, 3) - 1) || 0).toFixed(2)}</div>
+                
+                <h3 className="text-[10px] text-zinc-500 font-semibold uppercase tracking-widest mb-3 pt-4 border-t border-zinc-800">Diretrizes</h3>
+                <ul className="space-y-2 text-[11px] text-zinc-400 font-mono">
+                   <li className="flex justify-between border-b border-zinc-800/50 pb-1"><span>Stop Loss D.</span> <span className="text-rose-400">{config.stopLossDiario}%</span></li>
+                   <li className="flex justify-between border-b border-zinc-800/50 pb-1"><span>Stop Win D.</span> <span className="text-emerald-400">{config.objetivoDiario}%</span></li>
+                   <li className="flex justify-between pb-1"><span>Exposição Max.</span> <span>{statusRisco.exposicao}</span></li>
+                </ul>
               </div>
             </div>
           </div>
         )}
 
+        {/* VIEW: ANÁLISE (DESEMPENHO) */}
         {view === 'desempenho' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl flex flex-col items-center justify-center">
-                <h3 className="font-black text-sm uppercase tracking-widest mb-6 self-start flex items-center gap-2"><PieChartIcon size={16} className="text-blue-500" /> Mix de Resultados</h3>
-                <div className="h-48 w-full">
-                  {stats.pieData[0].value > 0 || stats.pieData[1].value > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={stats.pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                          {stats.pieData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-slate-500 text-sm">Nenhum dado</div>
-                  )}
-                </div>
-                <div className="flex gap-6 mt-4">
-                  <div className="flex items-center gap-2"><div className="w-3 h-3 bg-emerald-500 rounded-full"></div> <span className="text-xs">Wins: {stats.wins}</span></div>
-                  <div className="flex items-center gap-2"><div className="w-3 h-3 bg-red-500 rounded-full"></div> <span className="text-xs">Losses: {stats.losses}</span></div>
-                </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="bg-zinc-900/30 border border-zinc-800 rounded-md p-5">
+              <h3 className="text-[10px] text-zinc-500 font-semibold uppercase tracking-widest mb-4">Fator de Lucro (Profit Factor)</h3>
+              <div className="mb-6">
+                 <div className="text-4xl font-light text-zinc-100">{stats.profitFactor}</div>
+                 <p className="text-[10px] text-zinc-600 mt-1 font-mono">Gross Win / Gross Loss</p>
               </div>
-              <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-xl">
-                <h3 className="font-black text-sm uppercase tracking-widest mb-6 flex items-center gap-2 text-white"><Activity size={16} className="text-blue-500" /> Saúde do Sistema</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                   <div className="bg-black/30 p-4 rounded-xl border border-slate-800">
-                     <span className="text-[10px] text-slate-500 font-black uppercase block mb-1">Profit Factor</span>
-                     <div className="text-2xl font-black text-emerald-400">{stats.profitFactor}</div>
-                   </div>
-                   <div className="bg-black/30 p-4 rounded-xl border border-slate-800">
-                     <span className="text-[10px] text-slate-500 font-black uppercase block mb-1">Total Ciclos</span>
-                     <div className="text-2xl font-black text-blue-400">{stats.ciclosCompletos}</div>
-                   </div>
-                   <div className="bg-black/30 p-4 rounded-xl border border-slate-800">
-                     <span className="text-[10px] text-slate-500 font-black uppercase block mb-1">Total Entradas</span>
-                     <div className="text-2xl font-black text-yellow-400">{stats.totalEntradas}</div>
-                   </div>
-                   <div className="bg-black/30 p-4 rounded-xl border border-slate-800">
-                     <span className="text-[10px] text-slate-500 font-black uppercase block mb-1">Meta Diária</span>
-                     <div className="text-2xl font-black text-purple-400">{(stats.lucroTotal / Math.max(stats.totalEntradas, 1)).toFixed(2)}</div>
-                   </div>
-                   <div className="bg-black/30 p-4 rounded-xl border border-slate-800">
-                     <span className="text-[10px] text-slate-500 font-black uppercase block mb-1">Média Stake</span>
-                     <div className="text-2xl font-black text-cyan-400">R$ {stats.mediaStake.toFixed(2)}</div>
-                   </div>
-                   <div className="bg-black/30 p-4 rounded-xl border border-slate-800">
-                     <span className="text-[10px] text-slate-500 font-black uppercase block mb-1">Status</span>
-                     <div className={`text-2xl font-black ${statusRisco.cor.replace('bg-', 'text-')} capitalize`}>{statusRisco.label}</div>
-                   </div>
-                </div>
+              <div className="h-32 w-full mt-4">
+                {stats.pieData[0].value > 0 || stats.pieData[1].value > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={stats.pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={55} paddingAngle={2} dataKey="value" stroke="none">
+                        {stats.pieData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
+                      </Pie>
+                      <Tooltip contentStyle={{backgroundColor: '#09090b', border: '1px solid #27272a', fontSize: '10px'}} itemStyle={{color: '#e4e4e7'}} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-zinc-600 text-[10px] font-mono">No data</div>
+                )}
               </div>
             </div>
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-               <h3 className="font-black text-sm uppercase tracking-widest mb-6 flex items-center gap-2"><BarChart3 size={16} className="text-blue-500" /> Performance Visual</h3>
-               <div className="h-64">
-                 {historico.length > 0 ? (
-                   <ResponsiveContainer width="100%" height="100%">
-                     <LineChart data={historico.slice().reverse()}>
-                       <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                       <XAxis dataKey="data" stroke="#64748b" style={{fontSize: '12px'}} />
-                       <YAxis stroke="#64748b" style={{fontSize: '12px'}} />
-                       <Tooltip 
-                         contentStyle={{backgroundColor: '#1e293b', border: '1px solid #475569'}}
-                         labelStyle={{color: '#e2e8f0'}}
-                       />
-                       <Line 
-                         type="monotone" 
-                         dataKey="bancaResultante" 
-                         stroke="#3b82f6" 
-                         strokeWidth={2}
-                         dot={{fill: '#3b82f6', r: 4}}
-                         activeDot={{r: 6}}
-                       />
-                     </LineChart>
-                   </ResponsiveContainer>
-                 ) : (
-                   <div className="flex items-center justify-center h-full text-slate-500">Nenhum histórico</div>
-                 )}
-               </div>
+            
+            <div className="lg:col-span-2 bg-zinc-900/30 border border-zinc-800 rounded-md p-5 flex flex-col">
+              <h3 className="text-[10px] text-zinc-500 font-semibold uppercase tracking-widest mb-4">Evolução de Patrimônio</h3>
+              <div className="flex-grow min-h-[200px]">
+                {historico.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={historico.slice().reverse()}>
+                      <defs>
+                        <linearGradient id="colorBanca" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#d4d4d8" stopOpacity={0.1}/>
+                          <stop offset="95%" stopColor="#d4d4d8" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                      <XAxis dataKey="data" stroke="#52525b" fontSize={9} tickLine={false} axisLine={false} hide />
+                      <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} domain={['auto', 'auto']} tickFormatter={(v) => v.toFixed(0)} width={40} />
+                      <Tooltip contentStyle={{backgroundColor: '#09090b', border: '1px solid #27272a', fontSize: '11px', borderRadius: '4px'}} />
+                      <Area type="step" dataKey="bancaResultante" stroke="#d4d4d8" strokeWidth={1.5} fillOpacity={1} fill="url(#colorBanca)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-zinc-600 text-xs font-mono">Aguardando dados operacionais...</div>
+                )}
+              </div>
+              <div className="grid grid-cols-4 gap-2 mt-4 pt-4 border-t border-zinc-800/50">
+                 <div><span className="text-[9px] text-zinc-500 block uppercase">Entradas</span><span className="text-xs text-zinc-300 font-mono">{stats.totalEntradas}</span></div>
+                 <div><span className="text-[9px] text-zinc-500 block uppercase">Média Stake</span><span className="text-xs text-zinc-300 font-mono">{(stats.mediaStake).toFixed(2)}</span></div>
+                 <div><span className="text-[9px] text-zinc-500 block uppercase">Ciclos Init</span><span className="text-xs text-zinc-300 font-mono">{stats.ciclosIniciados}</span></div>
+                 <div><span className="text-[9px] text-zinc-500 block uppercase">Status</span><span className={`text-xs font-mono ${stats.roi >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{stats.roi >= 0 ? 'PROFIT' : 'LOSS'}</span></div>
+              </div>
             </div>
           </div>
         )}
 
+        {/* VIEW: LEDGER (OPERAÇÕES) */}
         {view === 'operacoes' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-            <div className="p-6 border-b border-slate-800"><h3 className="font-black text-lg tracking-tight text-white uppercase">Log de Auditoria</h3></div>
+          <div className="bg-zinc-900/30 border border-zinc-800 rounded-md overflow-hidden">
+            <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
+              <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">Ledger de Transações</h3>
+              <span className="text-[10px] text-zinc-600 font-mono">{historico.length} Registros</span>
+            </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-slate-950 text-slate-400 text-[10px] uppercase tracking-wider font-black">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-zinc-950/50 border-b border-zinc-800">
                   <tr>
-                    <th className="px-6 py-4">Horário</th>
-                    <th className="px-6 py-4">Stake</th>
-                    <th className="px-6 py-4">Resultado</th>
-                    <th className="px-6 py-4">Lucro/Perda</th>
-                    <th className="px-6 py-4">Saldo</th>
-                    <th className="px-6 py-4">Status</th>
+                    <th className="px-4 py-3 text-[9px] uppercase tracking-wider text-zinc-500 font-semibold">Time</th>
+                    <th className="px-4 py-3 text-[9px] uppercase tracking-wider text-zinc-500 font-semibold text-right">Stake</th>
+                    <th className="px-4 py-3 text-[9px] uppercase tracking-wider text-zinc-500 font-semibold text-center">T/P</th>
+                    <th className="px-4 py-3 text-[9px] uppercase tracking-wider text-zinc-500 font-semibold text-right">Net</th>
+                    <th className="px-4 py-3 text-[9px] uppercase tracking-wider text-zinc-500 font-semibold text-right">Balance</th>
+                    <th className="px-4 py-3 text-[9px] uppercase tracking-wider text-zinc-500 font-semibold text-right">Memo</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800">
+                <tbody className="divide-y divide-zinc-800/50 font-mono text-[11px]">
                   {historico.length > 0 ? (
                     historico.map((row) => (
-                      <tr key={row.id} className="hover:bg-slate-800/50 transition-colors">
-                        <td className="px-6 py-4 text-xs text-slate-400">{row.data}</td>
-                        <td className="px-6 py-4 text-xs text-slate-300">R$ {row.valor}</td>
-                        <td className="px-6 py-4 text-xs">
-                          <span className={`px-2 py-1 rounded-full text-[10px] font-black ${row.resultado === 'V' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                            {row.resultado === 'V' ? '✓ WIN' : '✗ RED'}
+                      <tr key={row.id} className="hover:bg-zinc-800/30 transition-colors">
+                        <td className="px-4 py-2.5 text-zinc-500">{row.data}</td>
+                        <td className="px-4 py-2.5 text-zinc-300 text-right">{row.valor}</td>
+                        <td className="px-4 py-2.5 text-center">
+                          <span className={`${row.resultado === 'V' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {row.resultado === 'V' ? 'WIN' : 'LOSS'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-xs font-bold">{row.lucro}</td>
-                        <td className="px-6 py-4 text-xs text-slate-300">R$ {row.bancaResultante.toFixed(2)}</td>
-                        <td className="px-6 py-4 text-xs text-slate-400">{row.status}</td>
+                        <td className={`px-4 py-2.5 text-right ${String(row.lucro).includes('+') ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {row.lucro.split(' ')[0]} {/* Pega apenas o número, tira o (Em ciclo) para visual limpo */}
+                        </td>
+                        <td className="px-4 py-2.5 text-zinc-100 text-right">{row.bancaResultante.toFixed(2)}</td>
+                        <td className="px-4 py-2.5 text-zinc-600 text-right truncate max-w-[100px]">{row.status}</td>
                       </tr>
                     ))
                   ) : (
-                    <tr>
-                      <td colSpan="6" className="px-6 py-8 text-center text-slate-500 text-sm">Nenhuma operação registrada</td>
-                    </tr>
+                    <tr><td colSpan="6" className="px-4 py-8 text-center text-zinc-600 italic">No entries found.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -582,125 +490,76 @@ const App = () => {
           </div>
         )}
 
+        {/* VIEW: PARÂMETROS (PROJEÇÕES/CONFIG) */}
         {view === 'projecoes' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-lg">
-              <h3 className="font-black text-lg mb-6 flex items-center gap-2 uppercase tracking-tighter"><Settings className="text-blue-500" /> Parâmetros de Gestão</h3>
-              <div className="space-y-6">
-                <div>
-                  <label className="text-xs text-slate-500 uppercase font-bold mb-2 block tracking-widest">Banca Base (R$)</label>
-                  <input 
-                    type="number" 
-                    value={config.bancaInicial} 
-                    onChange={(e) => setConfig({...config, bancaInicial: parseFloat(e.target.value) || 0})}
-                    className="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-lg focus:border-blue-500 outline-none"
-                  />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-zinc-900/30 border border-zinc-800 rounded-md p-5">
+              <h3 className="text-[10px] text-zinc-500 font-semibold uppercase tracking-widest mb-5">Inputs de Variáveis</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-zinc-800/50 pb-2">
+                  <label className="text-xs text-zinc-400 font-medium">Capital Base (R$)</label>
+                  <input type="number" value={config.bancaInicial} onChange={(e) => setConfig({...config, bancaInicial: parseFloat(e.target.value) || 0})} className="bg-transparent border-none text-right text-sm text-zinc-100 focus:ring-0 w-24 font-mono outline-none" />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-xs text-slate-500 uppercase font-bold mb-2 block text-emerald-500 tracking-widest">Stop Win (%)</label>
-                    <input 
-                      type="number" 
-                      step="0.1" 
-                      value={config.objetivoDiario} 
-                      onChange={(e) => setConfig({...config, objetivoDiario: parseFloat(e.target.value) || 0})}
-                      className="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-lg focus:border-emerald-500 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-500 uppercase font-bold mb-2 block text-red-500 tracking-widest">Stop Loss (%)</label>
-                    <input 
-                      type="number" 
-                      step="0.1" 
-                      value={config.stopLossDiario} 
-                      onChange={(e) => setConfig({...config, stopLossDiario: parseFloat(e.target.value) || 0})}
-                      className="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-lg focus:border-red-500 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-500 uppercase font-bold mb-2 block text-blue-500 tracking-widest">Odd Média</label>
-                    <input 
-                      type="number" 
-                      step="0.01" 
-                      value={config.oddPadrao} 
-                      onChange={(e) => setConfig({...config, oddPadrao: parseFloat(e.target.value) || 1.01})}
-                      className="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-lg focus:border-blue-500 outline-none"
-                    />
-                  </div>
+                <div className="flex items-center justify-between border-b border-zinc-800/50 pb-2">
+                  <label className="text-xs text-zinc-400 font-medium">Take Profit Diário (%)</label>
+                  <input type="number" step="0.1" value={config.objetivoDiario} onChange={(e) => setConfig({...config, objetivoDiario: parseFloat(e.target.value) || 0})} className="bg-transparent border-none text-right text-sm text-emerald-400 focus:ring-0 w-24 font-mono outline-none" />
                 </div>
-                <div className="pt-6 border-t border-slate-800">
-                  <h4 className="text-xs text-slate-500 uppercase font-bold mb-4 tracking-widest flex items-center gap-2"><RefreshCcw size={14} className="text-blue-500" /> Backup & Sincronização</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <button 
-                      onClick={exportToCSV} 
-                      disabled={historico.length === 0} 
-                      className="flex items-center justify-center gap-2 py-3 px-4 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-white font-bold rounded-lg transition-all text-xs uppercase"
-                    >
-                      <Download size={16} /> Exportar
-                    </button>
-                    <button 
-                      onClick={() => fileInputRef.current.click()} 
-                      className="flex items-center justify-center gap-2 py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg transition-all text-xs uppercase"
-                    >
-                      <Upload size={16} /> Importar
-                    </button>
-                  </div>
+                <div className="flex items-center justify-between border-b border-zinc-800/50 pb-2">
+                  <label className="text-xs text-zinc-400 font-medium">Stop Loss Diário (%)</label>
+                  <input type="number" step="0.1" value={config.stopLossDiario} onChange={(e) => setConfig({...config, stopLossDiario: parseFloat(e.target.value) || 0})} className="bg-transparent border-none text-right text-sm text-rose-400 focus:ring-0 w-24 font-mono outline-none" />
                 </div>
-                <button 
-                  onClick={() => setShowResetConfirm(true)} 
-                  className="w-full py-4 bg-slate-800 hover:bg-red-900/40 border border-slate-700 hover:border-red-500/50 text-white font-black rounded-xl transition-all text-xs uppercase tracking-widest"
-                >
-                  Reset Total do Sistema
-                </button>
+                <div className="flex items-center justify-between border-b border-zinc-800/50 pb-2">
+                  <label className="text-xs text-zinc-400 font-medium">Odd Execução</label>
+                  <input type="number" step="0.01" value={config.oddPadrao} onChange={(e) => setConfig({...config, oddPadrao: parseFloat(e.target.value) || 1.01})} className="bg-transparent border-none text-right text-sm text-indigo-400 focus:ring-0 w-24 font-mono outline-none" />
+                </div>
+
+                <div className="pt-4 flex gap-2">
+                  <button onClick={exportToCSV} disabled={historico.length === 0} className="flex-1 py-2 px-3 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/50 rounded text-[10px] uppercase font-semibold transition-all flex items-center justify-center gap-1.5 disabled:opacity-30"><Download size={12}/> Export .CSV</button>
+                  <button onClick={() => fileInputRef.current.click()} className="flex-1 py-2 px-3 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/50 rounded text-[10px] uppercase font-semibold transition-all flex items-center justify-center gap-1.5"><Upload size={12}/> Import .CSV</button>
+                </div>
+                <button onClick={() => setShowResetConfirm(true)} className="w-full py-2 bg-rose-500/5 hover:bg-rose-500/10 text-rose-500 border border-rose-500/20 rounded text-[10px] uppercase font-semibold transition-all mt-2">Factory Reset</button>
               </div>
             </div>
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-              <h3 className="font-black text-lg mb-6 flex items-center gap-2 uppercase tracking-tighter"><Calculator className="text-blue-500" /> Projeção Exponencial (30 dias)</h3>
-              <div className="space-y-4">
-                <div className="h-64">
-                  {projecoes.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={projecoes}>
-                        <defs>
-                          <linearGradient id="colorValor" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                        <XAxis dataKey="dia" stroke="#64748b" style={{fontSize: '10px'}} />
-                        <YAxis stroke="#64748b" style={{fontSize: '10px'}} />
-                        <Tooltip 
-                          contentStyle={{backgroundColor: '#1e293b', border: '1px solid #475569'}}
-                          labelStyle={{color: '#e2e8f0'}}
-                          formatter={(value) => `R$ ${value.toFixed(2)}`}
-                        />
-                        <Area type="monotone" dataKey="valor" stroke="#3b82f6" fillOpacity={1} fill="url(#colorValor)" />
-                        <Line type="monotone" dataKey="limite" stroke="#ef4444" strokeDasharray="5 5" dot={false} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-slate-500">Carregando...</div>
-                  )}
-                </div>
-                <div className="p-4 bg-black/30 rounded-lg border-l-4 border-emerald-500">
-                  <span className="text-slate-400 text-[10px] font-black uppercase block mb-1">Estimativa 7 Dias</span>
-                  <span className="text-emerald-400 font-black text-lg">R$ {(projecoes[7]?.valor || 0).toFixed(2)}</span>
-                </div>
-                <div className="p-4 bg-black/30 rounded-lg border-l-4 border-blue-500">
-                  <span className="text-slate-400 text-[10px] font-black uppercase block mb-1">Estimativa 30 Dias</span>
-                  <span className="text-blue-400 font-black text-lg">R$ {(projecoes[30]?.valor || 0).toFixed(2)}</span>
-                </div>
+
+            <div className="bg-zinc-900/30 border border-zinc-800 rounded-md p-5 flex flex-col">
+              <h3 className="text-[10px] text-zinc-500 font-semibold uppercase tracking-widest mb-5">Projeção Curva de Capital (30d)</h3>
+              <div className="flex-grow min-h-[150px] mb-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={projecoes}>
+                    <defs>
+                      <linearGradient id="colorProj" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="2 2" stroke="#27272a" vertical={false} />
+                    <XAxis dataKey="dia" stroke="#52525b" fontSize={9} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#52525b" fontSize={9} tickLine={false} axisLine={false} width={35} />
+                    <Tooltip contentStyle={{backgroundColor: '#09090b', border: '1px solid #27272a', fontSize: '10px'}} />
+                    <Area type="monotone" dataKey="valor" stroke="#4f46e5" strokeWidth={2} fillOpacity={1} fill="url(#colorProj)" />
+                    <Line type="monotone" dataKey="limite" stroke="#f43f5e" strokeWidth={1} strokeDasharray="3 3" dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="grid grid-cols-2 gap-3 border-t border-zinc-800/50 pt-4">
+                 <div>
+                    <span className="text-[9px] text-zinc-500 uppercase block mb-0.5">Est. 7 Dias</span>
+                    <span className="text-sm text-zinc-200 font-mono">R$ {(projecoes[7]?.valor || 0).toFixed(2)}</span>
+                 </div>
+                 <div>
+                    <span className="text-[9px] text-zinc-500 uppercase block mb-0.5">Est. 30 Dias</span>
+                    <span className="text-sm text-zinc-200 font-mono">R$ {(projecoes[30]?.valor || 0).toFixed(2)}</span>
+                 </div>
               </div>
             </div>
           </div>
         )}
+
       </main>
 
-      <footer className="max-w-7xl mx-auto mt-12 mb-8 text-center">
-        <div className="inline-block px-6 py-2 bg-slate-900 border border-slate-800 rounded-full">
-          <p className="text-[10px] text-slate-500 font-bold uppercase">Gestão PRO © 2024 | Dashboard de Ciclos Matemáticos</p>
-        </div>
+      <footer className="max-w-[1400px] mx-auto mt-8 border-t border-zinc-800 pt-4 text-center md:text-left flex justify-between items-center text-[10px] text-zinc-600 font-mono">
+        <p>GESTÃO PRO TERMINAL © 2026</p>
+        <p className="hidden md:block">MATHEMATICAL DISCIPLINE PRESERVES CAPITAL</p>
       </footer>
     </div>
   );
