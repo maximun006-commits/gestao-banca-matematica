@@ -41,6 +41,10 @@ const App = () => {
   const [lucroAcumuladoCiclo, setLucroAcumuladoCiclo] = useState(0);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
+  // Estados da aposta avulsa
+  const [avulsaStake, setAvulsaStake] = useState('');
+  const [avulsaOdd, setAvulsaOdd] = useState('');
+
   const fileInputRef = useRef(null);
 
   // --- CÁLCULOS MATEMÁTICOS ---
@@ -190,6 +194,37 @@ const App = () => {
     setShowResetConfirm(false);
   };
 
+  const processarAvulsa = (resultado) => {
+    const stake = parseFloat(avulsaStake) || apostaBase;
+    const odd = parseFloat(avulsaOdd) || config.oddPadrao;
+    const lucroDestaEntrada = stake * (odd - 1);
+    
+    let novaBanca;
+    let stringLucro;
+
+    if (resultado === 'V') {
+      novaBanca = bancaAtual + lucroDestaEntrada;
+      stringLucro = `+${lucroDestaEntrada.toFixed(2)}`;
+    } else {
+      novaBanca = Math.max(0, bancaAtual - stake);
+      stringLucro = `-${stake.toFixed(2)}`;
+    }
+
+    setBancaAtual(novaBanca);
+    setHistorico([{
+      id: Date.now(),
+      data: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit', second:'2-digit'}),
+      valor: stake.toFixed(2),
+      resultado: resultado,
+      bancaResultante: Number(novaBanca.toFixed(2)),
+      lucro: stringLucro,
+      status: "AVULSA"
+    }, ...historico]);
+
+    setAvulsaStake('');
+    setAvulsaOdd('');
+  };
+
   const processarEntrada = (resultado) => {
     const valorAtual = valorEntradaAtual || 0;
     const lucroDestaEntrada = valorAtual * (config.oddPadrao - 1);
@@ -325,46 +360,83 @@ const App = () => {
         {view === 'dashboard' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             
-            {/* PAINEL CENTRAL DE TRADING */}
-            <div className="lg:col-span-8 bg-zinc-900/30 border border-zinc-800 rounded-md p-5 flex flex-col">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">Painel de Execução: Soros</h2>
-                <div className="flex gap-1.5">
-                  {[1, 2, 3].map(s => (
-                    <div key={s} className={`w-6 h-1 rounded-sm ${cicloStep >= s ? 'bg-zinc-300' : 'bg-zinc-800'}`} />
+            {/* COLUNA ESQUERDA (PAINÉIS DE EXECUÇÃO) */}
+            <div className="lg:col-span-8 flex flex-col gap-4">
+              
+              {/* PAINEL DE EXECUÇÃO: SOROS */}
+              <div className="bg-zinc-900/30 border border-zinc-800 rounded-md p-5 flex flex-col">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">Painel de Execução: Soros</h2>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 mb-6 flex-grow">
+                  {[
+                    { step: 1, val: cicloValues.step1, label: 'BASE (1%)' },
+                    { step: 2, val: cicloValues.step2, label: `ALAVANCA 1 (x${config.oddPadrao})` },
+                    { step: 3, val: cicloValues.step3, label: `ALAVANCA 2 (x${Math.pow(config.oddPadrao, 2).toFixed(2)})` }
+                  ].map((item) => (
+                    <div key={item.step} className={`p-4 rounded-md border flex flex-col justify-center transition-all ${cicloStep === item.step ? 'bg-zinc-800/80 border-zinc-600' : 'bg-zinc-900/20 border-zinc-800/50 opacity-60'}`}>
+                      <span className="text-[9px] text-zinc-500 font-mono mb-2 uppercase">{item.label}</span>
+                      <div className="text-2xl font-light text-zinc-100 tracking-tight">
+                        <span className="text-sm text-zinc-600 mr-1">R$</span>{item.val.toFixed(2)}
+                      </div>
+                    </div>
                   ))}
+                </div>
+
+                <div className="flex flex-col sm:flex-row justify-between items-center bg-zinc-950 border border-zinc-800/80 p-3 rounded-md gap-4">
+                   <div className="text-left w-full sm:w-auto">
+                      <span className="text-[9px] text-zinc-500 font-mono uppercase block mb-0.5">Stake Atual</span>
+                      <span className="text-sm font-medium text-zinc-200 font-mono">R$ {valorEntradaAtual.toFixed(2)}</span>
+                   </div>
+                   <div className="flex gap-2 w-full sm:w-auto">
+                     <button onClick={() => processarEntrada('V')} className="flex-1 sm:flex-none px-6 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded font-medium transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
+                       <Check size={14} /> Win
+                     </button>
+                     <button onClick={() => processarEntrada('R')} className="flex-1 sm:flex-none px-6 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded font-medium transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
+                       <X size={14} /> Loss
+                     </button>
+                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 mb-6 flex-grow">
-                {[
-                  { step: 1, val: cicloValues.step1, label: 'BASE (1%)' },
-                  { step: 2, val: cicloValues.step2, label: `ALAVANCA 1 (x${config.oddPadrao})` },
-                  { step: 3, val: cicloValues.step3, label: `ALAVANCA 2 (x${Math.pow(config.oddPadrao, 2).toFixed(2)})` }
-                ].map((item) => (
-                  <div key={item.step} className={`p-4 rounded-md border flex flex-col justify-center transition-all ${cicloStep === item.step ? 'bg-zinc-800/80 border-zinc-600' : 'bg-zinc-900/20 border-zinc-800/50 opacity-60'}`}>
-                    <span className="text-[9px] text-zinc-500 font-mono mb-2 uppercase">{item.label}</span>
-                    <div className="text-2xl font-light text-zinc-100 tracking-tight">
-                      <span className="text-sm text-zinc-600 mr-1">R$</span>{item.val.toFixed(2)}
-                    </div>
+              {/* PAINEL DE EXECUÇÃO: SINGLE (AVULSA) */}
+              <div className="bg-zinc-900/30 border border-zinc-800 rounded-md p-5 flex flex-col">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">Painel de Execução: Single (Avulsa)</h2>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                  <div className="flex-1">
+                    <label className="text-[9px] text-zinc-500 uppercase block mb-1">Stake (R$)</label>
+                    <input
+                      type="number"
+                      placeholder={`Base: ${apostaBase.toFixed(2)}`}
+                      value={avulsaStake}
+                      onChange={(e) => setAvulsaStake(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 text-sm p-2 rounded focus:border-zinc-500 outline-none font-mono placeholder:text-zinc-700"
+                    />
                   </div>
-                ))}
+                  <div className="flex-1">
+                    <label className="text-[9px] text-zinc-500 uppercase block mb-1">Odd</label>
+                    <input
+                      type="number"
+                      placeholder={`Padrão: ${config.oddPadrao.toFixed(2)}`}
+                      value={avulsaOdd}
+                      onChange={(e) => setAvulsaOdd(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 text-sm p-2 rounded focus:border-zinc-500 outline-none font-mono placeholder:text-zinc-700"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 w-full">
+                  <button onClick={() => processarAvulsa('V')} className="flex-1 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded font-medium transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
+                    <Check size={14} /> Win Avulso
+                  </button>
+                  <button onClick={() => processarAvulsa('R')} className="flex-1 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded font-medium transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
+                    <X size={14} /> Loss Avulso
+                  </button>
+                </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row justify-between items-center bg-zinc-950 border border-zinc-800/80 p-3 rounded-md gap-4">
-                 <div className="text-left w-full sm:w-auto">
-                    <span className="text-[9px] text-zinc-500 font-mono uppercase block mb-0.5">Stake Atual</span>
-                    <span className="text-sm font-medium text-zinc-200 font-mono">R$ {valorEntradaAtual.toFixed(2)}</span>
-                 </div>
-                 <div className="flex gap-2 w-full sm:w-auto">
-                   <button onClick={() => processarEntrada('V')} className="flex-1 sm:flex-none px-6 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded font-medium transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
-                     <Check size={14} /> Win
-                   </button>
-                   <button onClick={() => processarEntrada('R')} className="flex-1 sm:flex-none px-6 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded font-medium transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
-                     <X size={14} /> Loss
-                   </button>
-                 </div>
-              </div>
             </div>
 
             {/* SIDEBAR DE INFORMAÇÃO */}
