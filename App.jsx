@@ -31,6 +31,7 @@ const App = () => {
     objetivoMensal: 60,
     objetivoDiario: 1.75,
     stopLossDiario: 3.0,
+    oddPadrao: 1.90,
     risco: 'Moderado'
   });
 
@@ -52,9 +53,9 @@ const App = () => {
   
   const cicloValues = useMemo(() => ({
     step1: apostaBase,
-    step2: apostaBase * 2,
-    step3: apostaBase * 4,
-  }), [apostaBase]);
+    step2: apostaBase * config.oddPadrao,
+    step3: apostaBase * Math.pow(config.oddPadrao, 2),
+  }), [apostaBase, config.oddPadrao]);
 
   const valorEntradaAtual = useMemo(() => {
     if (cicloStep === 1) return cicloValues.step1;
@@ -232,7 +233,7 @@ const App = () => {
   // ✅ Corrigido: Lógica de ciclos agora atualiza bancaResultante corretamente
   const processarEntrada = (resultado) => {
     const valorAtual = valorEntradaAtual || 0;
-    const lucroDestaEntrada = valorAtual * 0.9; // 90% de retorno por vitória
+    const lucroDestaEntrada = valorAtual * (config.oddPadrao - 1); // Retorno baseado na Odd configurada
     
     if (resultado === 'V') {
       const novoLucroAcumulado = lucroAcumuladoCiclo + lucroDestaEntrada;
@@ -446,7 +447,7 @@ const App = () => {
               </div>
               <div className="bg-blue-600/10 border border-blue-500/30 p-5 rounded-xl">
                 <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-2">Lucro Ciclo Completo</span>
-                <div className="text-2xl font-black text-white">R$ {(apostaBase * 7 || 0).toFixed(2)}</div>
+                <div className="text-2xl font-black text-white">R$ {(apostaBase * (Math.pow(config.oddPadrao, 3) - 1) || 0).toFixed(2)}</div>
               </div>
             </div>
           </div>
@@ -595,7 +596,7 @@ const App = () => {
                     className="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-lg focus:border-blue-500 outline-none"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="text-xs text-slate-500 uppercase font-bold mb-2 block text-emerald-500 tracking-widest">Stop Win (%)</label>
                     <input 
@@ -614,6 +615,16 @@ const App = () => {
                       value={config.stopLossDiario} 
                       onChange={(e) => setConfig({...config, stopLossDiario: parseFloat(e.target.value) || 0})}
                       className="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-lg focus:border-red-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 uppercase font-bold mb-2 block text-blue-500 tracking-widest">Odd Média</label>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      value={config.oddPadrao} 
+                      onChange={(e) => setConfig({...config, oddPadrao: parseFloat(e.target.value) || 1.01})}
+                      className="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-lg focus:border-blue-500 outline-none"
                     />
                   </div>
                 </div>
