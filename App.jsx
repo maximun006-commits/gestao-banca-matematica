@@ -31,7 +31,7 @@ const App = () => {
     objetivoMensal: 60,
     objetivoDiario: 1.75,
     stopLossDiario: 3.0,
-    oddPadrao: 1.90,
+    oddPadrao: 1.80,
     risco: 'Moderado'
   });
 
