@@ -9,8 +9,8 @@
     "recharts": "^2.0.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^latest",
-    "vite": "^latest"
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest"
   },
   "scripts": {
     "dev": "vite",
