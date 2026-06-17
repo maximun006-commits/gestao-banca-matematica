@@ -5,7 +5,7 @@
   "main": "App.jsx",
   "dependencies": {
     "react": "^18.0.0",
-    "lucide-react": "^latest",
+    "lucide-react": "latest",
     "recharts": "^2.0.0"
   },
   "devDependencies": {
