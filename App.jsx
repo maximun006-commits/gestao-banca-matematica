@@ -43,6 +43,7 @@ const App = () => {
 
   const fileInputRef = useRef(null);
 
+  // --- CÁLCULOS MATEMÁTICOS ---
   const apostaBase = useMemo(() => (bancaAtual || 0) * 0.01, [bancaAtual]);
   
   const cicloValues = useMemo(() => ({
@@ -57,6 +58,7 @@ const App = () => {
     return cicloValues.step3;
   }, [cicloStep, cicloValues]);
 
+  // --- MÉTRICAS DE DESEMPENHO AVANÇADAS ---
   const stats = useMemo(() => {
     const totalEntradas = historico.length;
     const wins = historico.filter(h => h.resultado === 'V').length;
@@ -96,8 +98,8 @@ const App = () => {
         ciclosCompletos, ciclosIniciados, eficienciaCiclo,
         profitFactor, roi, lucroTotal, mediaStake,
         pieData: [
-            { name: 'Wins', value: wins, color: '#10b981' },
-            { name: 'Losses', value: losses, color: '#f43f5e' }
+            { name: 'Wins', value: wins, color: '#10b981' }, // emerald-500
+            { name: 'Losses', value: losses, color: '#f43f5e' } // rose-500
         ]
     };
   }, [historico, bancaAtual, config.bancaInicial]);
@@ -129,6 +131,7 @@ const App = () => {
     return data;
   }, [bancaAtual, config.objetivoDiario, config.stopLossDiario, config.bancaInicial]);
 
+  // --- LÓGICA DE BACKUP (EXCEL/CSV) ---
   const exportToCSV = () => {
     if (historico.length === 0) return alert('Sem histórico.');
     const headers = ["Data", "Stake", "Resultado", "Lucro", "Saldo", "Status"];
