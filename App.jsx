@@ -31,7 +31,7 @@ const App = () => {
     objetivoMensal: 60,
     objetivoDiario: 1.75,
     stopLossDiario: 3.0,
-    oddPadrao: 1.80,
+    oddPadrao: 1.8,
     risco: 'Moderado'
   });
 
@@ -319,7 +319,7 @@ const App = () => {
               <h3 className="text-xl font-black uppercase tracking-tighter italic">Confirmar Reset Total?</h3>
             </div>
             <p className="text-slate-400 text-sm leading-relaxed mb-8">
-              Esta ação é <strong>irreversível</strong>. Você perderá todo o histórico de operações, métricas de desempenho e o saldo atual será retornado ao valor inicial. Deseja prosseguir?
+              Esta ação é <strong>irreversível</strong>. Você perderá todo o histórico de operações, métricas de desempenho e o saldo atual será retornado ao valor inicial. Deseja prossuir?
             </p>
             <div className="flex gap-3">
               <button 
@@ -352,10 +352,10 @@ const App = () => {
         </div>
         
         <div className="flex items-center gap-2 bg-slate-900 p-1 rounded-lg border border-slate-800 overflow-x-auto max-w-full">
-          <button onClick={() => setView('dashboard')} className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all ${view === 'dashboard' ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-slate-800'}`}>Dashboard</button>
-          <button onClick={() => setView('desempenho')} className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all ${view === 'desempenho' ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-slate-800'}`}>Desempenho</button>
-          <button onClick={() => setView('operacoes')} className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all ${view === 'operacoes' ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-slate-800'}`}>Operações</button>
-          <button onClick={() => setView('projecoes')} className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all ${view === 'projecoes' ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-slate-800'}`}>Projeções</button>
+          <button onClick={() => setView('dashboard')} className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all ${view === 'dashboard' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>Dashboard</button>
+          <button onClick={() => setView('desempenho')} className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all ${view === 'desempenho' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>Desempenho</button>
+          <button onClick={() => setView('operacoes')} className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all ${view === 'operacoes' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>Operações</button>
+          <button onClick={() => setView('projecoes')} className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all ${view === 'projecoes' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>Projeções</button>
         </div>
       </header>
 
@@ -425,11 +425,11 @@ const App = () => {
               </div>
 
               <div className="flex flex-col md:flex-row gap-4">
-                 <button onClick={() => processarEntrada('V')} className="flex-1 py-6 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl transition-all flex flex-col items-center justify-center gap-2 shadow-lg shadow-emerald-600/20">
+                 <button onClick={() => processarEntrada('V')} className="flex-1 py-6 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl transition-all flex flex-col items-center justify-center gap-2">
                    <CheckCircle2 size={24} /><span className="text-xs">Registrar Vitória</span>
                    <span className="text-[10px] opacity-70">Stake: R$ {(valorEntradaAtual || 0).toFixed(2)}</span>
                  </button>
-                 <button onClick={() => processarEntrada('R')} className="flex-1 py-6 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl transition-all flex flex-col items-center justify-center gap-2 shadow-lg shadow-red-600/20">
+                 <button onClick={() => processarEntrada('R')} className="flex-1 py-6 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl transition-all flex flex-col items-center justify-center gap-2">
                    <XCircle size={24} /><span className="text-xs">Registrar Derrota</span>
                    <span className="text-[10px] opacity-70">Resetar Ciclo</span>
                  </button>
@@ -648,7 +648,7 @@ const App = () => {
                 </div>
                 <button 
                   onClick={() => setShowResetConfirm(true)} 
-                  className="w-full py-4 bg-slate-800 hover:bg-red-900/40 border border-slate-700 hover:border-red-500/50 text-white font-black rounded-xl transition-all text-xs uppercase tracking-wider"
+                  className="w-full py-4 bg-slate-800 hover:bg-red-900/40 border border-slate-700 hover:border-red-500/50 text-white font-black rounded-xl transition-all text-xs uppercase tracking-widest"
                 >
                   Reset Total do Sistema
                 </button>
